@@ -1,0 +1,19 @@
+cd ~
+pwd
+touch $USER_part3.log
+mkdir -p D1/D2/D3
+touch D1/D2/file.txt
+echo "Hello linux" > D1/D2/file.txt
+ln D1/D2/file.txt D1/D2/D3/file_hard.txt
+ln -s ../file.txt D1/D2/D3/file_soft.txt
+ls -li D1/D2 D1/D2/D3
+mv D1/D2/file.txt D1/
+cat D1/D2/D3/file_hard.txt
+cat D1/D2/D3/file_soft.txt
+rm -r D1/D2
+find / -type f -size +20M 2>/dev/null
+du -h $(head -n 5 "$USER"_part3_gt20M.log)
+find ~ -type f -mtime -1
+which find
+file $(which find)
+file /boot/initrd.img*
