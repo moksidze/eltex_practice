@@ -1,6 +1,9 @@
-#include "calc.h"
-
-double DivideValues(double a, double b)
+double Operation(double a, double b)
 {
     return a / b;
+}
+
+const char *GetName(void)
+{
+    return "Деление";
 }
