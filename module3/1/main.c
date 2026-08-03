@@ -15,9 +15,10 @@ int main(int argc, char *argv[])
     for (int i = 1; i < argc; i++)
     {
         FILE *src = fopen(argv[i], "rb");
+
         if (src == NULL)
         {
-            printf("Не удалось открыть %s\n", argv[i]);
+            fprintf(stderr, "Ошибка: файл %s не существует.\n", argv[i]);
             continue;
         }
 
@@ -27,7 +28,7 @@ int main(int argc, char *argv[])
         FILE *dst = fopen(newName, "wb");
         if (dst == NULL)
         {
-            printf("Не удалось создать %s\n", newName);
+            fprintf(stderr, "Не удалось создать %s\n", newName);
             fclose(src);
             continue;
         }
@@ -43,6 +44,6 @@ int main(int argc, char *argv[])
 
         printf("Файл %s скопирован в %s\n", argv[i], newName);
     }
-
+    
     return 0;
 }
