@@ -1,49 +1,120 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+
+#include "parent.h"
+#include "child.h"
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
+    int p2c[2];
+    int c2p[2];
+
+    int use_fifo = 0;
+    char *fifo_name = NULL;
+
+    if (argc >= 3 && strcmp(argv[1], "-p") == 0)
     {
-        printf("Использование: %s файл1 файл2 ...\n", argv[0]);
-        return 1;
+        use_fifo = 1;
+        fifo_name = argv[2];
     }
 
-    char buffer[1024];
-
-    for (int i = 1; i < argc; i++)
+    if (!use_fifo)
     {
-        FILE *src = fopen(argv[i], "rb");
-
-        if (src == NULL)
+        if (pipe(p2c) == -1)
         {
-            fprintf(stderr, "Ошибка: файл %s не существует.\n", argv[i]);
-            continue;
+            perror("pipe");
+            return EXIT_FAILURE;
         }
 
-        char newName[256];
-        sprintf(newName, "copy_%s", argv[i]);
-
-        FILE *dst = fopen(newName, "wb");
-        if (dst == NULL)
+        if (pipe(c2p) == -1)
         {
-            fprintf(stderr, "Не удалось создать %s\n", newName);
-            fclose(src);
-            continue;
+            perror("pipe");
+            return EXIT_FAILURE;
         }
-
-        size_t bytes;
-        while ((bytes = fread(buffer, 1, sizeof(buffer), src)) > 0)
-        {
-            fwrite(buffer, 1, bytes, dst);
-        }
-
-        fclose(src);
-        fclose(dst);
-
-        printf("Файл %s скопирован в %s\n", argv[i], newName);
     }
-    
+    else
+    {
+        mkfifo(fifo_name, 0666);
+
+        if (pipe(c2p) == -1)
+        {
+            perror("pipe");
+            return EXIT_FAILURE;
+        }
+    }
+
+    pid_t pid = fork();
+
+    if (pid < 0)
+    {
+        perror("fork");
+        return EXIT_FAILURE;
+    }
+
+    if (pid == 0)
+    {
+        if (!use_fifo)
+        {
+            close(p2c[1]);
+            close(c2p[0]);
+
+            child_process(p2c[0], c2p[1]);
+
+            close(p2c[0]);
+            close(c2p[1]);
+        }
+        else
+        {
+            close(c2p[0]);
+
+            int fifo_fd = open(fifo_name, O_RDONLY);
+
+            child_process(fifo_fd, c2p[1]);
+
+            close(fifo_fd);
+            close(c2p[1]);
+        }
+    }
+    else
+    {
+        if (!use_fifo)
+        {
+            close(p2c[0]);
+            close(c2p[1]);
+
+            parent_process(argc,
+                           argv,
+                           c2p[0],
+                           p2c[1]);
+
+            close(c2p[0]);
+            close(p2c[1]);
+        }
+        else
+        {
+            close(c2p[1]);
+
+            int fifo_fd = open(fifo_name, O_WRONLY);
+
+            parent_process(argc,
+                           argv,
+                           c2p[0],
+                           fifo_fd);
+
+            close(c2p[0]);
+            close(fifo_fd);
+
+            unlink(fifo_name);
+        }
+
+        wait(NULL);
+    }
+
     return 0;
 }
