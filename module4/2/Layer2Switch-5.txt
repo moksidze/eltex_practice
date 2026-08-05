@@ -88,7 +88,7 @@ no ip http secure-server
 !
 control-plane
 !
-banner exec
+banner exec ^C
 **************************************************************************
 * IOSv - Cisco Systems Confidential                                      *
 *                                                                        *
@@ -106,7 +106,7 @@ banner exec
 * Unauthorized use or distribution of this software is expressly         *
 * Prohibited.                                                            *
 **************************************************************************^C
-banner incoming
+banner incoming ^C
 **************************************************************************
 * IOSv - Cisco Systems Confidential                                      *
 *                                                                        *
@@ -124,7 +124,7 @@ banner incoming
 * Unauthorized use or distribution of this software is expressly         *
 * Prohibited.                                                            *
 **************************************************************************^C
-banner login
+banner login ^C
 **************************************************************************
 * IOSv - Cisco Systems Confidential                                      *
 *                                                                        *
