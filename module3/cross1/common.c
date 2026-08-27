@@ -81,10 +81,6 @@ int send_udp_packet(
 
     memcpy(payload, data, data_len);
 
-    /*
-     * IP HEADER
-     */
-
     ip->ihl = 5;
     ip->version = 4;
     ip->tos = 0;
@@ -110,10 +106,6 @@ int send_udp_packet(
 
     ip->check = checksum(ip, sizeof(struct iphdr));
 
-    /*
-     * UDP HEADER
-     */
-
     udp->source = htons(src_port);
     udp->dest = htons(dst_port);
 
@@ -122,11 +114,6 @@ int send_udp_packet(
     );
 
     udp->check = 0;
-
-    /*
-     * Для Linux UDP checksum может быть 0.
-     * Это означает, что checksum не используется.
-     */
 
     struct sockaddr_in destination;
 
