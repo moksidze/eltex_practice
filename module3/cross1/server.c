@@ -190,10 +190,6 @@ int main(void)
             data
         );
 
-        /*
-         * Проверяем сообщение о закрытии
-         */
-
         if (strcmp(data, CLOSE_MESSAGE) == 0) {
 
             remove_client(
@@ -227,15 +223,7 @@ int main(void)
             }
         }
 
-        /*
-         * Увеличиваем счётчик
-         */
-
         client->counter++;
-
-        /*
-         * Формируем ответ
-         */
 
         char response[BUFFER_SIZE];
 
@@ -246,10 +234,6 @@ int main(void)
             data,
             client->counter
         );
-
-        /*
-         * Отправляем ответ
-         */
 
         send_udp_packet(
             server_socket,
