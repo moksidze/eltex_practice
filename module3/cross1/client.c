@@ -10,16 +10,15 @@
 #include <netinet/udp.h>
 
 static int client_socket = -1;
-
 static char server_ip[INET_ADDRSTRLEN];
 static char client_ip[INET_ADDRSTRLEN];
-
 static int client_port = 5001;
 
 void handle_signal(int signal)
 {
     if (signal == SIGINT) {
         printf("\nClosing client...\n");
+
         if (client_socket != -1) {
             send_udp_packet(
                 client_socket,
@@ -30,8 +29,10 @@ void handle_signal(int signal)
                 CLOSE_MESSAGE,
                 strlen(CLOSE_MESSAGE)
             );
+
             close(client_socket);
         }
+
         exit(0);
     }
 }
@@ -44,6 +45,8 @@ int main(int argc, char *argv[])
     }
 
     strncpy(server_ip, argv[1], sizeof(server_ip) - 1);
+    server_ip[sizeof(server_ip) - 1] = '\0';
+
     client_port = atoi(argv[2]);
 
     printf("Enter client IP: ");
@@ -55,6 +58,7 @@ int main(int argc, char *argv[])
     getchar();
 
     signal(SIGINT, handle_signal);
+
     client_socket = create_raw_socket();
 
     if (client_socket < 0) {
@@ -80,59 +84,83 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        send_udp_packet(
-            client_socket,
-            client_ip,
-            client_port,
-            server_ip,
-            SERVER_PORT,
-            message,
-            strlen(message)
-        );
-
-        char buffer[BUFFER_SIZE + sizeof(struct iphdr)];
-
-        ssize_t received = recvfrom(
-            client_socket,
-            buffer,
-            sizeof(buffer),
-            0,
-            NULL,
-            NULL
-        );
-
-        if (received < 0) {
-            perror("recvfrom");
+        if (send_udp_packet(
+                client_socket,
+                client_ip,
+                client_port,
+                server_ip,
+                SERVER_PORT,
+                message,
+                strlen(message)) < 0) {
             continue;
         }
 
-        struct iphdr *ip = (struct iphdr *)buffer;
+        while (1) {
+            char buffer[BUFFER_SIZE + sizeof(struct iphdr)];
+            ssize_t received = recvfrom(
+                client_socket,
+                buffer,
+                sizeof(buffer),
+                0,
+                NULL,
+                NULL
+            );
 
-        if (ip->protocol != IPPROTO_UDP) {
-            continue;
+            if (received < 0) {
+                perror("recvfrom");
+                break;
+            }
+
+            if (received < (ssize_t)(sizeof(struct iphdr) + sizeof(struct udphdr))) {
+                continue;
+            }
+
+            struct iphdr *ip = (struct iphdr *)buffer;
+
+            if (ip->version != 4 || ip->protocol != IPPROTO_UDP) {
+                continue;
+            }
+
+            int ip_header_len = ip->ihl * 4;
+
+            if (received < ip_header_len + (ssize_t)sizeof(struct udphdr)) {
+                continue;
+            }
+
+            struct udphdr *udp =
+                (struct udphdr *)(buffer + ip_header_len);
+
+            if (ip->saddr != inet_addr(server_ip)) {
+                continue;
+            }
+
+            if (ip->daddr != inet_addr(client_ip)) {
+                continue;
+            }
+
+            if (ntohs(udp->source) != SERVER_PORT) {
+                continue;
+            }
+
+            if (ntohs(udp->dest) != client_port) {
+                continue;
+            }
+
+            int data_len =
+                ntohs(udp->len) - sizeof(struct udphdr);
+
+            if (data_len < 0 || data_len >= BUFFER_SIZE) {
+                continue;
+            }
+
+            char *data =
+                buffer + ip_header_len + sizeof(struct udphdr);
+
+            data[data_len] = '\0';
+
+            printf("Server: %s\n", data);
+            break;
         }
-
-        struct udphdr *udp = (struct udphdr *)(buffer + ip->ihl * 4);
-
-        if (ip->saddr != inet_addr(server_ip)) {
-            continue;
-        }
-
-        if (ntohs(udp->source) != SERVER_PORT) {
-            continue;
-        }
-
-        char *data = buffer + ip->ihl * 4 + sizeof(struct udphdr);
-
-        int data_len = ntohs(udp->len) - sizeof(struct udphdr);
-
-        if (data_len >= BUFFER_SIZE) {
-            data_len = BUFFER_SIZE - 1;
-        }
-
-        data[data_len] = '\0';
-
-        printf("Server: %s\n", data);
     }
 
     if (client_socket != -1) {
