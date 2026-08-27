@@ -200,10 +200,6 @@ int main(void)
             continue;
         }
 
-        /*
-         * Ищем клиента
-         */
-
         Client *client =
             find_client(
                 ip->saddr,
